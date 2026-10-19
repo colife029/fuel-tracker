@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>油耗計算與紀錄</title>
+  <!-- Apple Web App 支援，加入主畫面全螢幕 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="油耗紀錄">
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 24px 16px 40px;
+      background-color: #f2f2f7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1c1c1e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 420px;
+    }
+    .header {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1c1c1e;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group:last-of-type {
+      margin-bottom: 20px;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8e8e93;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    input {
+      width: 100%;
+      height: 48px;
+      padding: 0 14px;
+      font-size: 16px;
+      border: 1.5px solid #e5e5ea;
+      border-radius: 12px;
+      background-color: #f9f9fb;
+      color: #1c1c1e;
+      transition: all 0.2s ease;
+    }
+    input:focus {
+      outline: none;
+      border-color: #007aff;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+    }
+    .unit-tag {
+      position: absolute;
+      right: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #8e8e93;
+      pointer-events: none;
+    }
+    button {
+      width: 100%;
+      height: 50px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s ease-in-out;
+    }
+    button:active {
+      transform: scale(0.985);
+    }
+    .btn-calc {
+      background-color: #34c759;
+      color: white;
+    }
+    .btn-save {
+      background-color: #007aff;
+      color: white;
+      margin-top: 14px;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    /* 示意圖成果漸層卡片 */
+    .result-card {
+      display: none;
+      margin-top: 18px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #bbf7d0 100%);
+      padding: 18px;
+      border: 1px solid #bae6fd;
+    }
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 6px 0;
+    }
+    .result-item:first-child {
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    .result-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f766e;
+    }
+    .result-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0369a1;
+    }
+    .result-val small {
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 2px;
+    }
+    .status-alert {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+    .status-alert.success {
+      display: block;
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    .status-alert.error {
+      display: block;
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    .status-alert.loading {
+      display: block;
+      background-color: #eff6ff;
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>⛽ 油耗計算與紀錄</h1>
+  </div>
+
+  <div class="card">
+    <div class="form-group">
+      <label>📅 加油日期</label>
+      <input type="date" id="dateInput">
+    </div>
+
+    <div class="form-group">
+      <label>⏮️ 上次總里程</label>
+      <div class="input-wrapper">
+        <input type="number" step="0.1" id="lastOdo" placeholder="初次請手動輸入">
+        <span class="unit-tag">km</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>🚗 本次總里程</label>
+      <div class="input-wrapper">
+        <input type="number" step="0.1" id="currentOdo" placeholder="儀表累積里程">
+        <span class="unit-tag">km</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>⛽ 加油公升數</label>
+      <div class="input-wrapper">
+        <input type="number" step="0.01" id="liters" placeholder="加滿公升數">
+        <span class="unit-tag">L</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>📝 備註 (選填)</label>
+      <input type="text" id="note" placeholder="例如：98無鉛、市區順暢">
+    </div>
+
+    <button class="btn-calc" onclick="handleCalculate()">開始計算</button>
+
+    <!-- 計算結果展示卡片 (符合示意圖漸層樣式) -->
+    <div class="result-card" id="resultCard">
+      <div class="result-item">
+        <span class="result-label">📍 本次行駛里程</span>
+        <span class="result-val"><span id="tripKmText">0</span> <small>km</small></span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">⚡ 平均油耗</span>
+        <span class="result-val"><span id="kmPerLiterText">0</span> <small>km/L</small></span>
+      </div>
+      <button class="btn-save" id="btnSave" onclick="handleSave()">儲存並同步至 Google 試算表</button>
+    </div>
+
+    <div class="status-alert" id="statusAlert"></div>
+  </div>
+</div>
+
+<script>
+  // 【重要】請將下方引號內替換成你的 Google Apps Script 網頁應用程式網址
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJz44tI34B_wUwUxsrMZZungj0mo9FWt67N8dM16DCYaif7DL0MVE9qzQTx7xy9Pi7/exec";
+
+  // 初始化預設值
+  const dateInput = document.getElementById('dateInput');
+  const lastOdoInput = document.getElementById('lastOdo');
+  const currentOdoInput = document.getElementById('currentOdo');
+  const litersInput = document.getElementById('liters');
+  const noteInput = document.getElementById('note');
+  const resultCard = document.getElementById('resultCard');
+  const statusAlert = document.getElementById('statusAlert');
+  const btnSave = document.getElementById('btnSave');
+
+  // 自動設定今天日期 (YYYY-MM-DD)
+  dateInput.value = new Date().toISOString().split('T')[0];
+
+  // 自動讀取手機本地記憶的上次里程
+  const savedLastOdo = localStorage.getItem('last_fuel_odo');
+  if (savedLastOdo) {
+    lastOdoInput.value = savedLastOdo;
+  }
+
+  let currentRecord = null;
+
+  function showStatus(text, type) {
+    statusAlert.className = 'status-alert ' + type;
+    statusAlert.textContent = text;
+  }
+
+  function handleCalculate() {
+    const lastOdo = parseFloat(lastOdoInput.value);
+    const currentOdo = parseFloat(currentOdoInput.value);
+    const liters = parseFloat(litersInput.value);
+
+    if (isNaN(lastOdo) || isNaN(currentOdo) || isNaN(liters)) {
+      alert("請完整輸入上次里程、本次里程與加油公升數！");
+      return;
+    }
+
+    if (currentOdo <= lastOdo) {
+      alert("本次里程必須大於上次總里程！");
+      return;
+    }
+
+    if (liters <= 0) {
+      alert("加油公升數必須大於 0！");
+      return;
+    }
+
+    const tripKm = (currentOdo - lastOdo).toFixed(1);
+    const kmPerLiter = (tripKm / liters).toFixed(2);
+
+    document.getElementById('tripKmText').textContent = tripKm;
+    document.getElementById('kmPerLiterText').textContent = kmPerLiter;
+
+    resultCard.style.display = 'block';
+    statusAlert.style.display = 'none';
+
+    currentRecord = {
+      date: dateInput.value,
+      lastOdo: lastOdo,
+      currentOdo: currentOdo,
+      tripKm: parseFloat(tripKm),
+      liters: liters,
+      kmPerLiter: parseFloat(kmPerLiter),
+      note: noteInput.value.trim()
+    };
+  }
+
+  async function handleSave() {
+    if (!currentRecord) return;
+
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("YOUR_APPS_SCRIPT_WEB_APP_URL")) {
+      alert("請先在 HTML 程式碼中填入你的 Google Apps Script 網頁應用程式網址！");
+      return;
+    }
+
+    btnSave.disabled = true;
+    showStatus("連線同步至 Google 試算表中...", "loading");
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentRecord)
+      });
+
+      // 儲存成功：將本次里程存入 localStorage 作為下次的基礎里程
+      localStorage.setItem('last_fuel_odo', currentRecord.currentOdo);
+      lastOdoInput.value = currentRecord.currentOdo;
+      currentOdoInput.value = "";
+      litersInput.value = "";
+      noteInput.value = "";
+
+      showStatus("✅ 資料已成功寫入 Google 試算表！", "success");
+      resultCard.style.display = 'none';
+      currentRecord = null;
+    } catch (err) {
+      showStatus("❌ 儲存失敗，請檢查網路連線或 Apps Script 權限！", "error");
+    } finally {
+      btnSave.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
